@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<flow name="oretailplusFlow" doc:id="5879773b-4b1c-4b40-a58a-022ccac12264" >
+		<set-variable value="#[sizeOf(message.payload)]" doc:name="recordCount" doc:id="492d96bf-5d45-4bcd-8dd7-663b67214014" variableName="recordCount"/>
+		<file:write doc:name="fileWrite" doc:id="a58f944a-59e3-47e9-b731-977cea136799" path="#[p('partner3.fileWrite') ++ '/MULEBANK-$(now() as Number)-$(vars.recordCount).csv']">
+			<file:content ><![CDATA[#[output application/csv
+---
+payload]]]></file:content>
+		</file:write>
+	</flow>
+</mule>

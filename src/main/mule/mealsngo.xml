@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd">
+	<flow name="mealsngoFlow" doc:id="7989c225-6e4f-4471-8770-355a7c511d55" >
+		<set-variable value="#[now() as Number]" doc:name="unixepochDate" doc:id="6fa40de0-d6b1-4901-a076-78840667d85f" variableName="unixepochDate"/>
+		<ftp:write doc:name="FTPWrite" doc:id="dc107cd7-1c70-431e-8233-c617cad1ec8a" config-ref="Partner2_FTP_Config" path='#["MULEBANK-gc-" ++ vars.unixepochDate as String ++ ".csv"]'>
+			<ftp:content ><![CDATA[#[output application/csv
+---
+payload]]]></ftp:content>
+		</ftp:write>
+	</flow>
+</mule>

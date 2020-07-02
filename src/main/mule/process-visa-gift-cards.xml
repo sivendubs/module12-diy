@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="processVisaGiftCards" doc:id="5ce4d6c4-fdef-4458-b765-c4c253d9f373" >
+		<file:listener doc:name="On New or Updated File" doc:id="2ef52bba-a6d6-4d32-8855-7ca4f259a9e0" directory="${master.fileIn}" moveToDirectory="${master.fileProcessed}">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+			<file:matcher filenamePattern="*.csv" />
+		</file:listener>
+		<ee:transform doc:name="CSV toJava" doc:id="739cbd3c-738a-4b13-b677-fa71d5d5e61b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload[0].partner]" doc:name="partner" doc:id="04c6b4f2-bcca-4466-a7a4-fd51e4d2fc40" variableName="partner"/>
+		<choice doc:name="Choice" doc:id="e51a5408-3cb0-4fbd-90e3-5ba131bd33da" >
+			<when expression="#[vars.partner == p('partner1.name')]">
+				<ee:transform doc:name="convert to Foodnsavings format" doc:id="0e8dccd5-b7ff-4f66-97be-990aa38eeeb3" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (object) ->
+	{
+		number: object.card_no,
+		sourceID: "MULEBANK-0949",
+		createdOn:now() as String {format: "yyyy-MM-dd HH:mm:ss"},
+		balance:object.amount_granted
+    }]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="foodnsavingsFlow" doc:id="0dda44ed-0511-4c93-8d61-d2408db807ba" name="foodnsavingsFlow"/>
+			</when>
+			<when expression="#[vars.partner == p('partner2.name')]">
+				<ee:transform doc:name="convert to MealsnGo format" doc:id="eb7ce7d6-c508-4399-bea1-b96b4f707a94" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (object) ->
+	{
+		gc_card_number: object.card_no,
+		gc_balance: object.amount_granted,
+		orgin: "MULEBANK-0949",
+		card_type: "VISA",
+		expiration: (now() + |P3M|) as Number
+	}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="foodnsavingsFlow" doc:id="0025e3ef-9b0c-4834-a575-b59e3057824e" name="mealsngoFlow"/>
+			</when>
+			<when expression="#[vars.partner == p('partner3.name')]">
+				<ee:transform doc:name="convert to Retailplus format" doc:id="40808cc0-d710-4fdf-bcbc-791dfbe063ef">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map(object) ->
+{
+	cardNo: object.card_no,
+	amount: object.amount_granted,
+	bankOrginationID: "MULEBANK-0949"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="oretailplusFlow" doc:id="148a2ba7-9116-4155-9dd8-df01b75ac691" name="oretailplusFlow"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="errorLogger" doc:id="ed4ea60c-6eeb-4ca9-ab38-0fbe05ee02d3" message="#['Invalid partner name in input file -&gt;' ++ attributes.fileName]"/>
+				<file:write doc:name="writeReport" doc:id="d6fa33b7-a9e2-4f15-8a72-ff7b416d64cf" path="#[p('master.fileWrite') ++ '/Invalidpartner-' ++ attributes.fileName ++ '-report.txt']">
+					<file:content><![CDATA[#[output text/plain
+---
+'Invalid partner name : ' ++ vars.partner ++ ' found in the input file ' ++ attributes.fileName]]]></file:content>
+				</file:write>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
