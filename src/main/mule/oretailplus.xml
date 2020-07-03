@@ -1,15 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
 	<flow name="oretailplusFlow" doc:id="5879773b-4b1c-4b40-a58a-022ccac12264" >
+		<jms:listener doc:name="Listener" doc:id="df58301d-fc8f-4d99-b4f5-686529b8d65c" config-ref="JMS_Config" destination="${partner3.queue}">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+			<jms:response >
+				<jms:properties ><![CDATA[#[jmsStatus: vars.jmsStatus]]]></jms:properties>
+			</jms:response>
+		</jms:listener>
 		<set-variable value="#[sizeOf(message.payload)]" doc:name="recordCount" doc:id="492d96bf-5d45-4bcd-8dd7-663b67214014" variableName="recordCount"/>
 		<file:write doc:name="fileWrite" doc:id="a58f944a-59e3-47e9-b731-977cea136799" path="#[p('partner3.fileWrite') ++ '/MULEBANK-$(now() as Number)-$(vars.recordCount).csv']">
 			<file:content ><![CDATA[#[output application/csv
 ---
 payload]]]></file:content>
 		</file:write>
+		<set-variable value="Success" doc:name="jmsStatus" doc:id="c0159389-b576-4cf7-bee7-62f38f8cba1a" variableName="jmsStatus"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6b80b68b-e351-4b28-b4a4-6361f47788c4" >
+				<set-variable value="Failure" doc:name="jmsStatus" doc:id="9dc3d661-75c3-4e39-9d35-e944466ee37e" variableName="jmsStatus"/>
+			</on-error-continue>
+		</error-handler>
 	</flow>
 </mule>

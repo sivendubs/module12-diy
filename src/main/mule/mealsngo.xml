@@ -1,15 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd">
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
 	<flow name="mealsngoFlow" doc:id="7989c225-6e4f-4471-8770-355a7c511d55" >
+		<jms:listener doc:name="Listener" doc:id="fd04f11a-3eb6-445d-8392-2b86aeca9370" config-ref="JMS_Config" destination="${partner2.queue}">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+			<jms:response >
+				<jms:properties ><![CDATA[#[jmsStatus: vars.jmsStatus]]]></jms:properties>
+			</jms:response>
+		</jms:listener>
 		<set-variable value="#[now() as Number]" doc:name="unixepochDate" doc:id="6fa40de0-d6b1-4901-a076-78840667d85f" variableName="unixepochDate"/>
 		<ftp:write doc:name="FTPWrite" doc:id="dc107cd7-1c70-431e-8233-c617cad1ec8a" config-ref="Partner2_FTP_Config" path='#["MULEBANK-gc-" ++ vars.unixepochDate as String ++ ".csv"]'>
 			<ftp:content ><![CDATA[#[output application/csv
 ---
 payload]]]></ftp:content>
 		</ftp:write>
+		<set-variable value="Success" doc:name="jmsStatus" doc:id="b4125cb5-581f-4032-9f87-44d084748ac2" variableName="jmsStatus"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="fdae997e-43af-4069-b81d-c72b29d4b850" >
+				<set-variable value="Failure" doc:name="jmsStatus" doc:id="3ef92725-76b6-4275-b734-d2e517e822fd" variableName="jmsStatus"/>
+			</on-error-continue>
+		</error-handler>
 	</flow>
 </mule>

@@ -8,6 +8,7 @@ master:
 #Dev will use in-memory Derby Database
 partner1:
   name: "Food and Savings"
+  queue: "foodnsavings"
   db:
     url: "jdbc:derby:memory:training"
     driver: "org.apache.derby.jdbc.EmbeddedDriver"
@@ -16,6 +17,7 @@ partner1:
 #Dev will use in-memory FTP server using MockFtpServer Java package. Change the port number here if your local machine is currently using port 9178
 partner2:
   name: "Meals n Go"
+  queue: "mealsngo"
   ftp:
     host: "localhost"
     port: "9178"
@@ -26,4 +28,5 @@ partner2:
 #Partner 3 File Server
 partner3:
   name: "Online Retail Plus"
+  queue: "oretailplus"
   fileWrite: "/Users/macrent/Desktop/files/partner3/receive"

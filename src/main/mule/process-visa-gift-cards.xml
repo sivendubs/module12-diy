@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
 	<flow name="processVisaGiftCards" doc:id="5ce4d6c4-fdef-4458-b765-c4c253d9f373" >
 		<file:listener doc:name="On New or Updated File" doc:id="2ef52bba-a6d6-4d32-8855-7ca4f259a9e0" directory="${master.fileIn}" moveToDirectory="${master.fileProcessed}">
 			<scheduling-strategy >
@@ -21,6 +22,7 @@ payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<set-variable value="#[payload[0].partner]" doc:name="partner" doc:id="04c6b4f2-bcca-4466-a7a4-fd51e4d2fc40" variableName="partner"/>
+		<set-variable value="#[sizeOf(payload)]" doc:name="recordCount" doc:id="76264cfb-6d70-4842-a0c8-362f83c58454" variableName="recordCount"/>
 		<choice doc:name="Choice" doc:id="e51a5408-3cb0-4fbd-90e3-5ba131bd33da" >
 			<when expression="#[vars.partner == p('partner1.name')]">
 				<ee:transform doc:name="convert to Foodnsavings format" doc:id="0e8dccd5-b7ff-4f66-97be-990aa38eeeb3" >
@@ -37,7 +39,10 @@ payload map (object) ->
     }]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<flow-ref doc:name="foodnsavingsFlow" doc:id="0dda44ed-0511-4c93-8d61-d2408db807ba" name="foodnsavingsFlow"/>
+				<jms:publish-consume doc:name="foodnsavings" doc:id="4c1c4486-b529-49c8-ad5e-0cfe6e081333" config-ref="JMS_Config" destination="${partner1.queue}">
+					<jms:publish-configuration timeToLive="100" timeToLiveUnit="SECONDS" />
+					<jms:consume-configuration maximumWait="100" maximumWaitUnit="SECONDS" />
+				</jms:publish-consume>
 			</when>
 			<when expression="#[vars.partner == p('partner2.name')]">
 				<ee:transform doc:name="convert to MealsnGo format" doc:id="eb7ce7d6-c508-4399-bea1-b96b4f707a94" >
@@ -55,7 +60,10 @@ payload map (object) ->
 	}]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<flow-ref doc:name="foodnsavingsFlow" doc:id="0025e3ef-9b0c-4834-a575-b59e3057824e" name="mealsngoFlow"/>
+				<jms:publish-consume doc:name="mealsngo" doc:id="54f0aae9-07f4-4342-8893-cc2eeae27125" config-ref="JMS_Config" destination="${partner2.queue}">
+					<jms:publish-configuration timeToLive="100" timeToLiveUnit="SECONDS" />
+					<jms:consume-configuration maximumWait="100" maximumWaitUnit="SECONDS" />
+				</jms:publish-consume>
 			</when>
 			<when expression="#[vars.partner == p('partner3.name')]">
 				<ee:transform doc:name="convert to Retailplus format" doc:id="40808cc0-d710-4fdf-bcbc-791dfbe063ef">
@@ -71,7 +79,10 @@ payload map(object) ->
 }]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<flow-ref doc:name="oretailplusFlow" doc:id="148a2ba7-9116-4155-9dd8-df01b75ac691" name="oretailplusFlow"/>
+				<jms:publish-consume doc:name="oretailplus" doc:id="551dfaba-b0ea-4dc3-a78f-b2aeb6d3c297" config-ref="JMS_Config" destination="${partner3.queue}">
+					<jms:publish-configuration timeToLive="100" timeToLiveUnit="SECONDS" />
+					<jms:consume-configuration maximumWait="100" maximumWaitUnit="SECONDS" />
+				</jms:publish-consume>
 			</when>
 			<otherwise >
 				<logger level="INFO" doc:name="errorLogger" doc:id="ed4ea60c-6eeb-4ca9-ab38-0fbe05ee02d3" message="#['Invalid partner name in input file -&gt;' ++ attributes.fileName]"/>
@@ -82,5 +93,12 @@ payload map(object) ->
 				</file:write>
 			</otherwise>
 		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="ad334946-15ea-446d-ba2f-2089731758dd" message="#[payload]"/>
+		<set-payload value="#[vars.recordCount ++ ' records were processed by ' ++ vars.partner ++ ' partner with the message ' ++ (attributes.properties.userProperties.jmsStatus default '')]" doc:name="summary" doc:id="fd94aa37-6741-4297-9f8f-2a1702b787b8" />
+		<file:write doc:name="report" doc:id="b8fefccb-409d-4c07-a22c-6942165d1c63" path="#[p('master.fileWrite') ++ '/$(vars.partner)-report-$(now() as Number).txt']">
+			<file:content ><![CDATA[#[output text/plain
+---
+payload]]]></file:content>
+		</file:write>
 	</flow>
 </mule>
